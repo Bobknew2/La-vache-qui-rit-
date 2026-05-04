@@ -4,43 +4,55 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>La Vache Qui Rit - Pro Gallery</title>
-    <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <!-- LightGallery CSS -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/lightgallery/2.7.1/css/lightgallery-bundle.min.css">
+    
     <style>
-        body { margin: 0; background: #000; color: white; font-family: sans-serif; text-align: center; overflow-x: hidden; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; padding: 15px; }
-        .grid .item { height: 120px; border-radius: 8px; overflow: hidden; background: #1a1a1a; position: relative; cursor: pointer; }
+        /* الستايل الأبيض (Light Mode) */
+        body { margin: 0; background: #ffffff; color: #333333; font-family: sans-serif; text-align: center; overflow-x: hidden; }
+        
+        /* صفحة الدخول والصورة */
+        .profile-img { width: 150px; height: 150px; border-radius: 50%; margin-top: 50px; border: 5px solid #ff4444; object-fit: cover; }
+        h1 { margin-top: 20px; font-size: 24px; color: #ff4444; }
+        .btn-enter { background: #ff4444; color: white; padding: 15px 35px; border-radius: 30px; border: none; cursor: pointer; font-size: 18px; margin-top: 20px; font-weight: bold; box-shadow: 0 4px 10px rgba(255,68,68,0.3); }
+        
+        /* شبكة الصور والفيديوهات */
+        #gallery { display: none; padding: 20px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 12px; margin-top: 30px; }
+        .grid .item { height: 110px; border-radius: 12px; overflow: hidden; background: #f9f9f9; position: relative; cursor: pointer; box-shadow: 0 4px 8px rgba(0,0,0,0.1); border: 1px solid #eee; }
         .grid img, .grid video { width: 100%; height: 100%; object-fit: cover; }
-        .video-icon { position: absolute; top: 5px; right: 5px; background: rgba(255,68,68,0.8); color: white; border-radius: 4px; padding: 2px 5px; font-size: 10px; font-weight: bold; }
-        .add-btn { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); width: 70px; height: 70px; background: #ff4444; color: white; border-radius: 50%; font-size: 40px; border: none; cursor: pointer; z-index: 1000; box-shadow: 0 5px 15px rgba(255,68,68,0.4); }
-        #status { position: fixed; top: 0; width: 100%; background: #ff4444; padding: 10px; z-index: 10001; display: none; font-weight: bold; }
-        .login-screen { padding-top: 150px; }
-        .login-screen h1 { color: #ff4444; margin-bottom: 30px; }
+        
+        /* علامة الفيديو */
+        .video-tag { position: absolute; top: 5px; right: 5px; background: rgba(255,68,68,0.9); color: white; border-radius: 4px; padding: 2px 5px; font-size: 9px; font-weight: bold; }
+
+        /* الإيموجيز الطائرة */
+        .emoji { position: fixed; font-size: 50px; bottom: -60px; animation: fly 5s linear infinite; z-index: 10000; pointer-events: none; }
+        @keyframes fly { to { transform: translateY(-120vh) rotate(360deg); } }
+        
+        /* زرار الرفع العائم */
+        .add-btn { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); width: 65px; height: 65px; background: #ff4444; color: white; border-radius: 50%; font-size: 35px; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer; box-shadow: 0 8px 20px rgba(255,68,68,0.4); z-index: 1000; }
+        
+        #status { position: fixed; top: 10px; right: 10px; background: rgba(0,0,0,0.8); color: white; padding: 10px 15px; border-radius: 8px; display: none; z-index: 10001; font-size: 14px; }
     </style>
 </head>
 <body>
-    <!-- اسم ملف الأغنية بالمسافات زي ما هو في GitHub -->
     <audio id="bgMusic" src="La%20Vache%20Qui%20Rit%20.mp3" loop></audio>
 
-    <div id="login" class="login-screen">
-        <h1>🐮 La Vache Qui Rit</h1>
-        <button class="add-btn" style="position: static; transform: none;" onclick="start()">Enter ❤️</button>
+    <div id="login">
+        <img src="Screenshot_20260504_175235.jpg" class="profile-img">
+        <h1>Are you from "la vache qui rit" group?</h1>
+        <button class="btn-enter" onclick="start()">Yes, I am ❤️</button>
     </div>
 
-    <div id="gallery" style="display:none;">
-        <div id="status">Uploading Media... 🚀</div>
+    <div id="gallery">
+        <div id="status">Uploading to Cloud... 🚀</div>
         <div class="grid" id="grid"></div>
         <button class="add-btn" onclick="document.getElementById('f').click()">+</button>
         <input type="file" id="f" hidden multiple accept="image/*,video/*" onchange="uploadFiles(this.files)">
     </div>
 
-    <!-- LightGallery JS -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/lightgallery/2.7.1/lightgallery.min.js"></script>
-
     <script>
+        // إعدادات Firebase الخاصة بك
         const firebaseConfig = {
             apiKey: "AIzaSyDTkz07GYiwjebwpmPk_KDffGcFPlofze4",
             authDomain: "la-vache-qui-rit-e6016.firebaseapp.com",
@@ -52,25 +64,40 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        // بيانات Cloudinary الخاصة بك
+        // إعدادات Cloudinary الخاصة بك
         const CLOUD_NAME = "dobvxzwuf"; 
-        const UPLOAD_PRESET = "La vache qui rit"; 
+        const UPLOAD_PRESET = "اسم_الـ_preset_هنا"; // استبدل "اسم_الـ_preset_هنا" بالاسم اللي عملته في Cloudinary
 
         function start() {
-            document.getElementById('bgMusic').play().catch(e => console.log("Audio play blocked"));
+            // تشغيل الأغنية
+            const audio = document.getElementById('bgMusic');
+            audio.play().catch(e => console.log("Audio activation requires interaction"));
+
+            // تبديل الصفحات
             document.getElementById('login').style.display = 'none';
             document.getElementById('gallery').style.display = 'block';
+            
+            // تفعيل الإيموجيز الطائرة
+            setInterval(() => {
+                const e = document.createElement('div');
+                e.className = 'emoji';
+                e.innerText = ['❤️', '😂', '🐮', '✨', '🔥'][Math.floor(Math.random()*5)];
+                e.style.left = Math.random() * 90 + 'vw';
+                document.body.appendChild(e);
+                setTimeout(() => e.remove(), 5000);
+            }, 500);
         }
 
         async function uploadFiles(files) {
             const status = document.getElementById('status');
             status.style.display = 'block';
+            
             for (let file of files) {
                 const formData = new FormData();
                 formData.append("file", file);
                 formData.append("upload_preset", UPLOAD_PRESET);
                 
-                // تحديد نوع الملف (صورة أو فيديو) لضمان الرفع الصحيح
+                // تحديد نوع الملف
                 const resourceType = file.type.startsWith('video') ? 'video' : 'image';
 
                 try {
@@ -79,34 +106,39 @@
                         body: formData
                     });
                     const data = await res.json();
+                    
                     if (data.secure_url) {
-                        // حفظ الرابط والنوع في Firebase
+                        // حفظ البيانات في Firestore
                         await db.collection('media').add({
                             url: data.secure_url,
                             type: resourceType,
                             time: Date.now()
                         });
                     }
-                } catch (e) { console.error("Error during upload:", e); }
+                } catch (e) {
+                    console.error("Upload error", e);
+                }
             }
             status.style.display = 'none';
         }
 
-        // عرض الصور والفيديوهات من Firebase
+        // جلب الصور والفيديوهات من Firestore وعرضها
         db.collection('media').orderBy('time', 'desc').onSnapshot(snap => {
             const grid = document.getElementById('grid');
             grid.innerHTML = '';
+            
             snap.forEach(doc => {
                 const item = doc.data();
                 const div = document.createElement('div');
                 div.className = 'item';
+                
                 if (item.type === 'video') {
-                    // إضافة علامة فيديو ولقطة شاشة مصغرة
-                    div.innerHTML = `<span class="video-icon">VIDEO</span><video src="${item.url}#t=0.1"></video>`;
+                    div.innerHTML = `<span class="video-tag">VIDEO</span><video src="${item.url}#t=0.1" muted></video>`;
                 } else {
                     div.innerHTML = `<img src="${item.url}">`;
                 }
-                // الضغط يفتح الملف في نافذة جديدة (أو يمكنك دمج LightGallery هنا لاحقاً)
+                
+                // فتح الملف عند الضغط عليه
                 div.onclick = () => window.open(item.url, '_blank');
                 grid.appendChild(div);
             });
