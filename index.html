@@ -11,23 +11,42 @@
 
     <style>
         body { margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; background: #ffffff; color: #333; overflow-x: hidden; }
-        #login-page { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; text-align: center; }
-        .profile-img { width: 200px; height: 200px; border-radius: 50%; border: 6px solid #ff4444; object-fit: cover; margin-bottom: 25px; box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
-        .btn-enter { background: #ff4444; color: white; border: none; padding: 15px 40px; font-size: 1.1rem; border-radius: 50px; cursor: pointer; font-weight: bold; transition: 0.3s; }
         
-        #gallery-page { display: none; padding: 20px; min-height: 100vh; }
-        .gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 12px; padding-bottom: 100px; }
+        /* صفحة الدخول */
+        #login-page { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; text-align: center; }
+        .profile-img { width: 200px; height: 200px; border-radius: 50%; border: 6px solid #ff4444; object-fit: cover; margin-bottom: 25px; }
+        .btn-enter { background: #ff4444; color: white; border: none; padding: 15px 40px; font-size: 1.1rem; border-radius: 50px; cursor: pointer; font-weight: bold; }
+        
+        /* صفحة الجاليري */
+        #gallery-page { display: none; padding: 20px; min-height: 100vh; position: relative; }
+        .gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 12px; padding-bottom: 100px; position: relative; z-index: 5; }
         .gallery-item { width: 100%; height: 110px; object-fit: cover; border-radius: 12px; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
 
-        .emoji { position: fixed; font-size: 30px; animation: flyUp 7s linear infinite; z-index: 99; pointer-events: none; }
-        @keyframes flyUp { 0% { transform: translateY(110vh) rotate(0deg); opacity: 0; } 100% { transform: translateY(-15vh) rotate(360deg); opacity: 0; } }
+        /* ✨ كود الإيموجيز المحدث ✨ */
+        .emoji { 
+            position: fixed; 
+            font-size: 50px; /* حجم كبير وواضح */
+            bottom: -60px;
+            animation: flyUp 6s linear infinite; 
+            z-index: 9999; /* أعلى طبقة في الموقع */
+            pointer-events: none; 
+            filter: drop-shadow(0 0 5px rgba(0,0,0,0.1));
+        }
+        @keyframes flyUp { 
+            0% { transform: translateY(0) rotate(0deg); opacity: 0; } 
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateY(-120vh) rotate(360deg); opacity: 0; } 
+        }
 
+        /* زر الإضافة */
         .add-btn { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); width: 65px; height: 65px; background: #ff4444; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 35px; color: white; cursor: pointer; z-index: 1000; box-shadow: 0 8px 25px rgba(255, 68, 68, 0.4); }
 
+        /* عارض الصور */
         #lightbox { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.98); z-index: 2000; justify-content: center; align-items: center; }
-        #lightbox img { max-width: 90%; max-height: 80%; border-radius: 10px; }
+        #lightbox img { max-width: 90%; max-height: 80%; border-radius: 10px; box-shadow: 0 0 20px rgba(0,0,0,0.1); }
         .nav-btn { position: absolute; top: 50%; color: #ff4444; font-size: 40px; cursor: pointer; padding: 20px; user-select: none; }
-        .close-btn { position: absolute; top: 20px; right: 30px; font-size: 40px; cursor: pointer; }
+        .close-btn { position: absolute; top: 20px; right: 30px; font-size: 40px; color: #333; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -39,9 +58,9 @@
     </div>
 
     <div id="gallery-page">
-        <div class="gallery-grid" id="galleryGrid"></div>
+        <div id="emoji-holder"></div> <div class="gallery-grid" id="galleryGrid"></div>
         <div class="add-btn" onclick="document.getElementById('fileInput').click()">+</div>
-        <input type="file" id="fileInput" hidden accept="image/*" onchange="uploadImage(this.files[0])">
+        <input type="file" id="fileInput" hidden accept="image/*" multiple onchange="handleMultipleUploads(this.files)">
     </div>
 
     <div id="lightbox">
@@ -79,19 +98,17 @@
             listenForImages();
         }
 
-        async function uploadImage(file) {
-            if (!file) return;
-            try {
-                // محاولة الرفع على Storage
-                const ref = storage.ref('gallery/' + Date.now() + "_" + file.name);
-                const snapshot = await ref.put(file);
-                const url = await snapshot.ref.getDownloadURL();
-                // حفظ الرابط في Firestore للأبد
-                await db.collection('photos').add({ url: url, createdAt: Date.now() });
-                alert("Image added to memories! ❤️");
-            } catch (e) {
-                console.error(e);
-                alert("Make sure you enabled 'Test Mode' in Firebase Firestore and Storage!");
+        async function handleMultipleUploads(files) {
+            for (let file of files) {
+                try {
+                    const ref = storage.ref('gallery/' + Date.now() + "_" + file.name);
+                    const snapshot = await ref.put(file);
+                    const url = await snapshot.ref.getDownloadURL();
+                    await db.collection('photos').add({ url: url, createdAt: Date.now() });
+                } catch (e) {
+                    console.error(e);
+                    alert("Upload error! Make sure Storage is in Test Mode.");
+                }
             }
         }
 
@@ -129,14 +146,16 @@
         }
 
         function startFloatingEmojis() {
-            const emojis = ['❤️', '😂', '🐮'];
+            const emojis = ['❤️', '😂', '🐮', '🔥', '✨'];
+            const container = document.getElementById('emoji-holder');
             setInterval(() => {
                 const el = document.createElement('div');
                 el.className = 'emoji';
                 el.innerText = emojis[Math.floor(Math.random() * emojis.length)];
-                el.style.left = Math.random() * 95 + 'vw';
-                document.body.appendChild(el);
-                setTimeout(() => el.remove(), 7000);
+                el.style.left = Math.random() * 90 + 'vw';
+                el.style.animationDuration = (Math.random() * 2 + 4) + 's';
+                container.appendChild(el);
+                setTimeout(() => el.remove(), 6000);
             }, 600);
         }
     </script>
