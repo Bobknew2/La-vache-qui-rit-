@@ -3,18 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>La Vache Qui Rit</title>
+    <title>La Vache Qui Rit - Gallery</title>
+    
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/lightgallery/2.7.1/css/lightgallery-bundle.min.css">
+
     <style>
         body { margin: 0; background: #fff; font-family: sans-serif; text-align: center; overflow-x: hidden; }
         .profile-img { width: 150px; height: 150px; border-radius: 50%; margin-top: 50px; border: 5px solid #ff4444; }
         .btn-enter { background: #ff4444; color: white; padding: 15px 30px; border-radius: 30px; border: none; cursor: pointer; font-size: 18px; margin-top: 20px; font-weight: bold; }
+        
         #gallery { display: none; padding: 20px; }
+        
+        /* ضبط الشبكة لعرض الصور بشكل متناسق */
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; margin-top: 20px; }
+        .grid a { display: block; height: 110px; overflow: hidden; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        .grid img { width: 100%; height: 100%; object-fit: cover; transition: 0.3s; }
+        .grid img:hover { transform: scale(1.1); }
+
         .emoji { position: fixed; font-size: 50px; bottom: -60px; animation: fly 5s linear infinite; z-index: 10000; pointer-events: none; }
         @keyframes fly { to { transform: translateY(-120vh) rotate(360deg); } }
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; margin-top: 20px; }
-        .grid img { width: 100%; height: 100px; object-fit: cover; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        
         .add-btn { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); width: 65px; height: 65px; background: #ff4444; color: white; border-radius: 50%; font-size: 35px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 8px 20px rgba(255,68,68,0.4); z-index: 1000; }
         #uploading-status { position: fixed; top: 10px; right: 10px; background: rgba(0,0,0,0.7); color: white; padding: 10px; border-radius: 5px; display: none; z-index: 10001; }
     </style>
@@ -35,6 +46,8 @@
         <input type="file" id="f" hidden multiple onchange="upload(this.files)">
     </div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lightgallery/2.7.1/lightgallery.min.js"></script>
+
     <script>
         const firebaseConfig = {
             apiKey: "AIzaSyDTkz07GYiwjebwpmPk_KDffGcFPlofze4",
@@ -49,18 +62,11 @@
 
         const IMGBB_API_KEY = "714cc473e63e3ba752719943bfd4ee36"; 
 
+        let lgInstance = null;
+
         function start() {
             const audio = document.getElementById('bgMusic');
-            
-            // محاولة تشغيل الصوت بأكثر من طريقة لضمان النتيجة
-            audio.muted = false;
-            audio.play().then(() => {
-                console.log("Success!");
-            }).catch(e => {
-                console.error("Error playing audio:", e);
-                // لو فشل، جرب يشتغل بعد ثانية واحدة
-                setTimeout(() => audio.play(), 1000);
-            });
+            audio.play().catch(e => console.log("Audio play blocked"));
 
             document.getElementById('login').style.display = 'none';
             document.getElementById('gallery').style.display = 'block';
@@ -88,18 +94,33 @@
                     });
                     const data = await response.json();
                     if (data.success) {
-                        const url = data.data.url;
-                        await db.collection('photos').add({ url, time: Date.now() });
+                        await db.collection('photos').add({ url: data.data.url, time: Date.now() });
                     }
                 } catch (error) { console.error(error); }
             }
             status.style.display = 'none';
         }
 
+        // عرض الصور وتفعيل خاصية التقليب يمين وشمال
         db.collection('photos').orderBy('time', 'desc').onSnapshot(snap => {
-            let html = '';
-            snap.forEach(doc => { html += `<img src="${doc.data().url}">`; });
-            document.getElementById('grid').innerHTML = html;
+            const grid = document.getElementById('grid');
+            grid.innerHTML = '';
+            
+            snap.forEach(doc => {
+                const url = doc.data().url;
+                const anchor = document.createElement('a');
+                anchor.href = url;
+                anchor.innerHTML = `<img src="${url}">`;
+                grid.appendChild(anchor);
+            });
+
+            // إعادة تشغيل المكتبة مع كل صورة جديدة
+            if (lgInstance) { lgInstance.destroy(); }
+            lgInstance = lightGallery(grid, {
+                speed: 500,
+                download: true,
+                selector: 'a'
+            });
         });
     </script>
 </body>
