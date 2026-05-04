@@ -3,38 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>La Vache Qui Rit - Memories</title>
+    <title>La Vache Qui Rit</title>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <style>
-        body { margin: 0; background: #fff; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; overflow-x: hidden; }
-        .login-page { padding: 50px 20px; }
-        .profile-img { width: 150px; height: 150px; border-radius: 50%; border: 5px solid #ff4444; object-fit: cover; }
-        .btn-enter { background: #ff4444; color: white; padding: 15px 35px; border-radius: 30px; border: none; cursor: pointer; font-size: 18px; margin-top: 20px; font-weight: bold; box-shadow: 0 4px 15px rgba(255,68,68,0.3); }
+        body { margin: 0; background: #fff; font-family: sans-serif; text-align: center; overflow-x: hidden; }
+        .profile-img { width: 150px; height: 150px; border-radius: 50%; margin-top: 50px; border: 5px solid #ff4444; }
+        .btn-enter { background: #ff4444; color: white; padding: 15px 30px; border-radius: 30px; border: none; cursor: pointer; font-size: 18px; margin-top: 20px; font-weight: bold; }
         #gallery { display: none; padding: 20px; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; margin-top: 20px; }
-        .grid img { width: 100%; height: 110px; object-fit: cover; border-radius: 12px; transition: 0.3s; }
-        .add-btn { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); width: 70px; height: 70px; background: #ff4444; color: white; border-radius: 50%; font-size: 40px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 8px 25px rgba(255,68,68,0.5); z-index: 1000; }
         .emoji { position: fixed; font-size: 50px; bottom: -60px; animation: fly 5s linear infinite; z-index: 10000; pointer-events: none; }
         @keyframes fly { to { transform: translateY(-120vh) rotate(360deg); } }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; margin-top: 20px; }
+        .grid img { width: 100%; height: 100px; object-fit: cover; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        .add-btn { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); width: 65px; height: 65px; background: #ff4444; color: white; border-radius: 50%; font-size: 35px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 8px 20px rgba(255,68,68,0.4); z-index: 1000; }
+        #uploading-status { position: fixed; top: 10px; right: 10px; background: rgba(0,0,0,0.7); color: white; padding: 10px; border-radius: 5px; display: none; z-index: 10001; }
     </style>
 </head>
 <body>
+    <!-- ملف الموسيقى بجانب الـ HTML واسمه music.mp3 -->
+    <audio id="bgMusic" src="music.mp3" loop></audio>
 
-    <div id="login" class="login-page">
+    <div id="login">
         <img src="Screenshot_20260504_175235.jpg" class="profile-img">
         <h1>Are you from "la vache qui rit" group?</h1>
-        <button class="btn-enter" onclick="startApp()">Yes, I am ❤️</button>
+        <button class="btn-enter" onclick="start()">Yes, I am ❤️</button>
     </div>
 
     <div id="gallery">
-        <div class="grid" id="photoGrid"></div>
-        <div class="add-btn" onclick="document.getElementById('fileInput').click()">+</div>
-        <input type="file" id="fileInput" hidden multiple accept="image/*" onchange="handleUpload(this.files)">
+        <div id="uploading-status">Uploading to ImgBB...</div>
+        <div class="grid" id="grid"></div>
+        <div class="add-btn" onclick="document.getElementById('f').click()">+</div>
+        <input type="file" id="f" hidden multiple onchange="upload(this.files)">
     </div>
 
     <script>
-        // بيانات Firebase الخاصة بيك (Firestore بس اللي هنستخدمه)
         const firebaseConfig = {
             apiKey: "AIzaSyDTkz07GYiwjebwpmPk_KDffGcFPlofze4",
             authDomain: "la-vache-qui-rit-e6016.firebaseapp.com",
@@ -46,54 +48,59 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        function startApp() {
+        // الـ API Key الخاص بك تم وضعه هنا بنجاح
+        const IMGBB_API_KEY = "714cc473e63e3ba752719943bfd4ee36"; 
+
+        function start() {
+            const audio = document.getElementById('bgMusic');
+            audio.play().catch(e => console.log("Audio activation failed"));
+
             document.getElementById('login').style.display = 'none';
             document.getElementById('gallery').style.display = 'block';
-            // تشغيل الإيموجيز
+            
             setInterval(() => {
                 const e = document.createElement('div');
                 e.className = 'emoji';
-                e.innerText = ['❤️', '😂', '🐮', '🔥', '✨'][Math.floor(Math.random()*5)];
+                e.innerText = ['❤️', '😂', '🐮', '✨', '🔥'][Math.floor(Math.random()*5)];
                 e.style.left = Math.random() * 90 + 'vw';
                 document.body.appendChild(e);
                 setTimeout(() => e.remove(), 5000);
             }, 500);
         }
 
-        async function handleUpload(files) {
-            const IMGBB_KEY = "714cc473e63e3ba752719943bfd4ee36"; // الـ API Key بتاعك
-
+        async function upload(files) {
+            const status = document.getElementById('uploading-status');
+            status.style.display = 'block';
+            
             for (let file of files) {
-                let formData = new FormData();
-                formData.append("image", file);
-
                 try {
-                    const response = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_KEY}`, {
+                    let formData = new FormData();
+                    formData.append("image", file);
+
+                    const response = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
                         method: "POST",
                         body: formData
                     });
-                    const result = await response.json();
-                    
-                    if (result.success) {
+
+                    const data = await response.json();
+                    if (data.success) {
+                        const url = data.data.url;
                         // حفظ الرابط في Firestore
-                        await db.collection('memories').add({
-                            url: result.data.url,
-                            time: Date.now()
-                        });
+                        await db.collection('photos').add({ url, time: Date.now() });
                     }
-                } catch (err) {
-                    console.error("Upload failed", err);
+                } catch (error) {
+                    console.error("Upload error:", error);
                 }
             }
+            status.style.display = 'none';
         }
 
-        // عرض الصور فوراً من Firestore
-        db.collection('memories').orderBy('time', 'desc').onSnapshot(snap => {
+        db.collection('photos').orderBy('time', 'desc').onSnapshot(snap => {
             let html = '';
             snap.forEach(doc => {
                 html += `<img src="${doc.data().url}">`;
             });
-            document.getElementById('photoGrid').innerHTML = html;
+            document.getElementById('grid').innerHTML = html;
         });
     </script>
 </body>
